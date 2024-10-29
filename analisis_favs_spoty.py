@@ -2,7 +2,6 @@
 """#ANÁLISIS FAVORITAS DE SPOTIFY"""
 
 import pandas as pd
-import numpy as np
 import seaborn as sns
 from matplotlib import pyplot as plt
 from sklearn.cluster import KMeans, DBSCAN
@@ -11,14 +10,13 @@ import shap
 import xgboost
 import spotipy
 from spotipy.oauth2 import SpotifyOAuth
-import os
-import streamlit as st
+
 
 df = pd.read_csv('favoritas_hasta_septiembre24.csv')
 
 
 def clean_df(data):
-    # Verifica si las columnas necesarias existen antes de renombrarlas
+
     required_columns = ['\t\t\t\tDanceability', 'Artist Name(s)', 'Album Name', 'Track ID', 'Duration (ms)',
                         'Track Name']
 
@@ -42,7 +40,9 @@ def clean_df(data):
 
 
 def conocer_variables():
-    explicacion = ("""1. Popularity (Popularidad)
+    explicacion = ("""Vamos a ver qué significa cada columna para poder comenzar a entender el Dataframe:
+    
+    1. Popularity (Popularidad)
 
         Descripción: Es una medida que indica qué tan popular es una canción en la plataforma de Spotify. Este valor es un número entre 0 y 100, donde 100 representa la canción más popular. La popularidad se basa en el número de reproducciones recientes, cuántas veces ha sido compartida, añadida a playlists y otros factores que Spotify considera.
         Rango: 0 a 100.
@@ -148,7 +148,7 @@ def eda(data):   #EDA
     # Comprobar valores nulos
     print("\n\nConteo de valores nulos:")
     null_counts = data.isnull().sum()
-    null_counts.to_csv('df_nulos.csv')  # Guardar conteo de nulos en un CSV
+    null_counts.to_csv('df_nulos.csv')
     print(null_counts)
 
 
@@ -205,13 +205,9 @@ def var_num(data):
 def genre(data):   #GÉNEROS
     # Recuento de géneros en bruto
     print('\n\nHacemos un recuento de los géneros en bruto:')
-    print('\n', data['Genres'].value_counts().sort_values(ascending=False).head(15))
-
     # Crear un DataFrame alternativo para trabajar sobre los géneros sin perder la canción
     df_genres = data[['ID', 'Track Name', 'Genres']].set_index('ID')
     print('\n\n', df_genres.head(2))
-
-    # Generar dummies de los géneros
     df_dummies_genres = df_genres.copy()  # Hacer una copia para trabajar
     print('\n\n',df_dummies_genres.head(2))
 
@@ -238,35 +234,24 @@ def genre(data):   #GÉNEROS
     # Eliminar la columna original 'Genres'
     df_dummies_genres.drop('Genres', axis=1, inplace=True)
 
-    # Mostrar las primeras filas del DataFrame resultante
-    print('\n\nEste es el dataframe con los dummies', df_dummies_genres.head(2))
 
     # Crear columnas unificando géneros
     df_dummies_genres['hip_hop'] = df_dummies_genres[['hip hop', 'rap']].max(axis=1)
     df_dummies_genres['rumba_flamenco'] = df_dummies_genres[['rumba', 'flamenco']].max(axis=1)
     df_dummies_genres['punk_rock'] = df_dummies_genres[['punk', 'new wave']].max(axis=1)
-    df_dummies_genres.drop(columns=['hip hop', 'rap', 'rumba', 'flamenco'], inplace=True)
+    df_dummies_genres.drop(columns=['hip hop', 'rap', 'rumba', 'flamenco', 'punk', 'new wave'], inplace=True)
 
-    # Eliminar géneros 'alternative' y 'dance' ya que son etiquetas que participan en varios géneros más grandes.
+    # Eliminar géneros 'alternative' y 'dance', ya que son etiquetas que participan en varios géneros más grandes.
     for genre in ['alternative', 'dance']:
         if df_dummies_genres[genre].any():
-            print(f"\nEliminando género: {genre}")
             df_dummies_genres.drop(genre, axis=1, inplace=True)
 
-
-    # Recuento por curiosidad y para seguir viendo cosas
-    df_dummies_NoNames = df_dummies_genres.drop('Track Name', axis=1)
-    print('\n\n', df_dummies_NoNames.sum().sort_values(ascending=False))
-
-
-    # Limpiar columnas 'rock' y 'pop'
-
-    # Asignar 0 a 'rock' si alguna de las otras columnas tiene un 1
+    # Limpiar columnas 'rock' y 'pop'... Asignar 0 a 'rock' si alguna de las otras columnas tiene un 1
 
     columns_to_check_rock = [
         'pop', 'electronic', 'jazz', 'blues', 'metal', 'folk',
         'classical', 'latin', 'reggae', 'funk', 'soul', 'country',
-        'punk', 'indie', 'new wave', 'psychedelic', 'trap', 'world', 'ska',
+        'indie', 'psychedelic', 'trap', 'world', 'ska',
         'hip_hop', 'rumba_flamenco', 'punk_rock'
     ]
 
@@ -279,7 +264,7 @@ def genre(data):   #GÉNEROS
     columns_to_check_pop = [
         'electronic', 'jazz', 'blues', 'metal', 'folk',
         'classical', 'latin', 'reggae', 'funk', 'soul', 'country',
-        'punk', 'indie', 'new wave', 'psychedelic', 'trap', 'world', 'ska',
+        'indie', 'psychedelic', 'trap', 'world', 'ska',
         'hip_hop', 'rumba_flamenco', 'punk_rock'
     ]
 
@@ -299,7 +284,7 @@ def genre(data):   #GÉNEROS
 
 
 
-def favs_vs_2023_vs_history(data):     #COMPARACIÓN CON TOP ESPAÑA 2023 Y MOST STREAMED SONGS
+def favs_vs_2023_vs_history(data):     #COMPARACIÓN CON TOP ESPAÑA 2023 Y MOST STREAMED SONGS IN HISTORY
 
     df_2023 = pd.read_csv('top_canciones_2023_espaa.csv')
     df_history = pd.read_csv('top_100_most_streamed_songs_on_spotify_updated.csv')
@@ -320,8 +305,8 @@ def favs_vs_2023_vs_history(data):     #COMPARACIÓN CON TOP ESPAÑA 2023 Y MOST
 
     vars = ['Danceability', 'Energy', 'Loudness', 'Valence', 'Tempo']
 
-    # Reemplazar valores de duración superiores a 600 por 600
-    df_combined.loc[df_combined['Duration'] > 500, 'Duration'] = 500
+    # Reemplazar valores de duración superiores a 7 minutos por 7 minutos
+    df_combined.loc[df_combined['Duration'] > 420, 'Duration'] = 420
 
     for var in ['Popularity', 'Duration'] + vars:
         for plot_type in ['violin', 'box']:
@@ -344,64 +329,33 @@ def favs_vs_2023_vs_history(data):     #COMPARACIÓN CON TOP ESPAÑA 2023 Y MOST
     vars = ['Popularity', 'Danceability', 'Acousticness']
 
     for var in vars:
-        # Calcular medias y medianas para cada variable en los 3 DataFrames
+
         means = [df[var].mean() for df in [df_2023, df_history, df_favs]]
         medians = [df[var].median() for df in [df_2023, df_history, df_favs]]
 
-        # Iterar sobre medias y medianas para generar gráficos
+
         for values, metric_name, plot_title in zip([means, medians], ['Media', 'Mediana'],
                                                    [f'Medias de {var}', f'Medianas de {var}']):
-            plt.figure(figsize=(8, 6))  # Ajustar tamaño del gráfico
+            plt.figure(figsize=(8, 6))
             plt.bar(['df_2023', 'df_history', 'df_favs'], values, color=['blue', 'green', 'red'])
             plt.title(plot_title)
             plt.ylabel(metric_name)
 
-            # Establecer límites personalizados según la variable
             if var == 'Acousticness':
                 plt.ylim(0, 0.5)
             elif var == 'Danceability':
                 plt.ylim(0, 1)
             elif var == 'Popularity':
-                plt.ylim(0, 100)  # Popularity va de 0 a 100
+                plt.ylim(0, 100)
 
             plt.savefig(f'{metric_name.lower()}_{var.lower()}.png')
             plt.close()
-
-
-def conclusiones():
-# --- Conclusiones en primera persona ---
-    texto_conclusiones = f"""
-    Mis conclusiones:
-    1. **Popularidad**: Parece que mis canciones favoritas tienen una popularidad promedio bastante más baja
-       que las canciones más streameadas de la historia y ligeramente inferior a las más escuchadas en 2023.
-       Esto me hace pensar que mis gustos tienden a ser algo diferentes de lo que es popular a nivel global.
-    
-    2. **Duración**: La duración promedio de mis canciones favoritas es menor que las de las canciones más
-       populares de la historia y de 2023. Me doy cuenta de que suelo preferir canciones más breves.
-    
-    3. **Danceability**: Me parece interesante que mis canciones tienen un nivel de "bailabilidad" que se asemeja
-       al de las canciones más populares de 2023, lo que sugiere que me gusta el ritmo, aunque no siempre esté
-       entre lo más escuchado.
-    
-    4. **Energy y Loudness**: Aparentemente, disfruto de música menos enérgica y menos "ruidosa" en comparación
-       con las más populares de 2023. Esto podría sugerir que prefiero música más tranquila o menos intensa.
-    
-    5. **Valence**: Me he dado cuenta de que mis canciones favoritas son generalmente más alegres y positivas
-       que las canciones más escuchadas globalmente, lo que refleja una inclinación hacia un tono emocional más optimista.
-    
-    En general, este análisis me ha ayudado a ver cómo mis gustos musicales se alinean o se desvían de las tendencias globales,
-    y me confirma que mi estilo es único en muchos sentidos.
-    """
-    print(texto_conclusiones)
-
 
 
 def artistas_albums(data):  #ARTISTAS Y ÁLBUMS
     data['Artist'].value_counts().sort_values(ascending=False).head(30)
 
     data['Artist'].value_counts()
-
-    #Nos estamos perdiendo canciones
 
     # Paso 1: Dividir los artistas por comas
     df_artistas = data['Artist'].str.split(',')
@@ -413,7 +367,7 @@ def artistas_albums(data):  #ARTISTAS Y ÁLBUMS
 
     conteo_artistas = df_artistas_expandido.value_counts().sort_values(ascending=False)
 
-    print('\n\nEsta es la lista con mis 50 artistas con más canciones entre mis favoritas:\n', conteo_artistas.head(50))
+    print('\n\nEsta es la lista con mis 50 artistas con más canciones entre mis favoritas:\n\n', conteo_artistas.head(50))
 
     print('\n\nHay', conteo_artistas.count(), 'artistas en mi lista de favoritos')
 
@@ -438,7 +392,7 @@ def playlist(data): #MIS PLAYLIST POR VARIABLES: MODELO DE CLUSTERIZACIÓN
     df_clusters['label_kmeans'] = kmeans.fit_predict(df_clusters[variables_clusters])
 
     # Visualizar los resultados del clustering
-    print("Conteo de clusters de KMeans:")
+    print("\n\nConteo de clusters de KMeans:")
     print(df_clusters['label_kmeans'].value_counts())
 
     # Dividir los datos en entrenamiento y prueba
@@ -455,11 +409,11 @@ def playlist(data): #MIS PLAYLIST POR VARIABLES: MODELO DE CLUSTERIZACIÓN
     shap_values = explainer(X_test)
 
     # Imprimir dimensiones para verificar
-    print("Dimensiones de X_test:", X_test.shape)
-    print("Dimensiones de shap_values:", shap_values.shape)
+    #print("Dimensiones de X_test:", X_test.shape)
+    #print("Dimensiones de shap_values:", shap_values.shape)
 
     # Visualizar los valores SHAP solo para la primera clase (0 en este caso)
-    shap.summary_plot(shap_values[:, :, 0], X_test)  # Usar la primera clase
+    shap.summary_plot(shap_values[:, :, 0], X_test)
 
     # Scatterplot de 'Energy' vs 'Acousticness' según los clusters de KMeans
     plt.figure(figsize=(10, 6))
@@ -488,8 +442,9 @@ def playlist(data): #MIS PLAYLIST POR VARIABLES: MODELO DE CLUSTERIZACIÓN
     df_clusters[['Track Name', 'Artist', 'Popularity','Duration']] = data[['Track Name', 'Artist', 'Popularity','Duration']]
     canciones_por_cluster = df_clusters.groupby('label_kmeans').first().reset_index()
 
+    print("\n\nValores y ejemplos de los clústeres del kmeans:")
     for index, row in canciones_por_cluster.iterrows():
-        print(f"Cluster {row['label_kmeans']}:")
+        print(f"\n\nCluster {row['label_kmeans']}:")
         print(f"  Canción: {row.get('Track Name', 'No disponible')}")
         print(f"  Artista: {row.get('Artist', 'No disponible')}")
         print(f"  Popularidad: {row.get('Popularity', 'No disponible')}")
@@ -497,7 +452,6 @@ def playlist(data): #MIS PLAYLIST POR VARIABLES: MODELO DE CLUSTERIZACIÓN
         print(f"  Danceabilidad: {row['Danceability']}")
         print(f"  Energía: {row['Energy']}")
         print(f"  Tempo: {row['Tempo']}")
-        print("")
 
     return df_clusters  # Devuelve el DataFrame con las etiquetas de cluster
 
@@ -545,69 +499,105 @@ def llevarlo_a_spotify(data): ##TENGO QUE LLAMAR AL ARCHIVO CON CLUSTERS
     # Crear la playlist
     crear_playlist(sp, user_id, nombre_playlist, lista_ids)
 
+
+def conclusiones():
+    # --- Conclusiones en primera persona ---
+    texto_conclusiones = f"""
+Mis conclusiones:
+    
+    ***EDA Y VARIABLES NUMÉRICAS:***
+    
+    1. Tan solo hay valores vacíos en las columnas 'Record label', la cual no ha sido utilizada en este análisis,
+        por lo que no se han tenido que tomar decisiones al respecto; y en 'Genres', donde solo son 172 y se ha decidido
+        no tener estas en cuenta.
+    
+    2.  Las medias y las medianas no varían mucho una respecto a la otra, pero si encontramos features con desviaciones con cola
+        de caballo a izquierdas (Mode, acousticness, tempo) y a derechas (Liveness, time signature, valence).
+    
+    3.  La media y la mediana de la duración distan 8 segundos por lo que vemos que hay algún outlayer de más duración.
+    
+    4.  No se encuentra un número alto de canciones grabadas en directo (liveness).
+    
+    5.  Algunas features tienen correlacción (Loudness y energy, acousticness y energy, valence y daceability, acousticness y 
+        loudness) pero conociendo cómo se produce la música y a que hace referencia cada feature, tiene sentido. Por ejemplo,
+        las canciones acústicas suelen ser menos enérgicas.
+    
+    
+    ***COMPARACIÓN CON LAS MÁS POPULARES DE LA HISTORIA Y DE 2023***
+    
+    1. **Popularidad**: Parece que mis canciones favoritas tienen una popularidad promedio bastante más baja
+       que las canciones más streameadas de la historia y ligeramente inferior a las más escuchadas en 2023.
+       Esto me hace pensar que mis gustos tienden a ser algo diferentes de lo que es popular a nivel global.
+       
+    2. **Duración**: La duración promedio de mis canciones favoritas es menor que las de las canciones más
+       populares de la historia y de 2023. Me doy cuenta de que suelo preferir canciones más breves.
+
+    3. **Danceability**: Me parece interesante que mis canciones tienen un nivel de "bailabilidad" que se asemeja
+       al de las canciones más populares de 2023, lo que sugiere que me gusta el ritmo, aunque no siempre esté
+       entre lo más escuchado.
+
+    4. **Energy y Loudness**: Aparentemente, disfruto de música menos enérgica y menos "ruidosa" en comparación
+       con las más populares de 2023. Esto podría sugerir que prefiero música más tranquila o menos intensa.
+
+    5. **Valence**: Me he dado cuenta de que mis canciones favoritas son generalmente más alegres y positivas
+       que las canciones más escuchadas globalmente, lo que refleja una inclinación hacia un tono emocional más optimista.
+    
+    6.  En general, este análisis me ha ayudado a ver cómo mis gustos musicales se alinean o se desvían de las tendencias globales,
+        y me confirma que mi estilo es único en muchos sentidos.
+    
+    
+    ***GÉNEROS, ARTISTAS Y ÁLBUMS***
+    
+    1.  En cuanto a géneros, he hecho una limpieza basándome en los géneros más habituales y eliminando los secundarios (Ejemplo: indie rock
+        por lo general es una canción indie y no rock). He unificado géneros con similitudes como Rumba y flamenco, hip-hop y rap, etc. Además,
+        por conocimiento de la música a aparecer he dejado géneros minoritarios como pueden ser reggae o ska.
+        
+    2.  Es llamativo ver como géneros como la música clásica o la electrónica están tan bajas, es posible que alguna de las canciones que no
+        tenían género asignado pertenecía a uno de estos dos grupos.
+        
+    3.  El artista que más canciones tiene guardadas es Leiva y completando los 6 primeros puestos Melendi, Pereza (Grupo anterior de Leiva),
+        Extremoduro y Fito y Fitipaldis. Para encontrar al primer artista de habla no hispana hay que irse hasta Arctic Monkeys (21 canciones,
+        puesto 27). Esto hace presagiar que para que una canción de habla no hispana me guste debe tener algo más, además probablemente esto haya
+        ido unido a mi desarrollo del lenguaje anglosajón o descubrimiento de música en habla italiana, turca o germana.
+        
+    4.  En la lista de artistas aparecen un total de 1546 artistas diferentes.
+    
+    5.  Los dos álbums más escuchados son álbums de versiones recopilatorios de grupos (Fitografía y All Star Smash Hits).
+    
+    
+    ***PLAYLIST AUTOMÁTICAS***
+    
+    1.  Utilicemos el número de clústeres que utilicemos y el modelo de clusterización siempre suele tener más peso la feature
+        Tempo para hacer la separación.
+
+
+    ***CONCLUSIONES FINALES***
+    
+    1.  Se ha conseguido elaborar una herramienta capaz de realizar un análisis más completo que el reporte anual de Spotify,
+        probablemente con la cantidad de datos que maneja Spotify entre usuarios podría aportar un análisis de mayor calidad
+        con unos costes muy reducidos.
+        
+    2.  Se podría haber hecho la misma comparación con los géneros que con los valores numéricos respecto a las playlist más populares.
+
+    3.  Es bonito ver cómo una playlist creada a lo largo de más de 12 años va evolucionando y hacen referencias a artistas retirados,
+        o géneros de música que en este momento no escucho tanto.
+    """
+    print(texto_conclusiones)
+
+
+
 def reporte_final(data):
-    #conocer_variables(data)
+    conocer_variables()
     clean_df(data)
     eda(data)
-    genre(data)
     var_num(data)
     favs_vs_2023_vs_history(data)
+    genre(data)
     artistas_albums(data)
     playlist(data)
-    #conclusiones(data)
+    #llevarlo_a_spotify(data)
+    conclusiones()
 
 reporte_final(df)
-
-def reporte_streamlit(data):
-    # Set up the Streamlit layout
-    st.title("Análisis de Favoritas de Spotify")
-    st.sidebar.header("Opciones")
-
-    # File uploader for CSV file
-    uploaded_file = st.sidebar.file_uploader("Cargar el archivo CSV", type=["csv"])
-
-    # If a file is uploaded
-    # Set up the Streamlit layout
-    st.title("Análisis de Favoritas de Spotify")
-    st.sidebar.header("Opciones")
-
-    # Load the default CSV file
-    default_file_path = 'favoritas_hasta_septiembre24.csv'
-
-    # Check if the default CSV file exists
-    if os.path.exists(default_file_path):
-        data = pd.read_csv(default_file_path)
-
-
-        # Clean the DataFrame
-        data = clean_df(data)
-        st.success("Datos cargados y limpiados exitosamente!")
-
-        # Display the cleaned data
-        st.subheader("Datos Limpiados")
-        st.write(data.head())
-
-        # Visualization: Distribution of Danceability
-        st.subheader("Distribución de Danceability")
-        fig, ax = plt.subplots()
-        sns.histplot(data['Danceability'], bins=30, kde=True, ax=ax)
-        st.pyplot(fig)
-
-        # Slider for selecting number of clusters (for KMeans)
-        num_clusters = st.sidebar.slider("Seleccionar número de clusters", min_value=2, max_value=10, value=3)
-
-        # Clustering (example)
-        if st.sidebar.button("Realizar Clustering"):
-            kmeans = KMeans(n_clusters=num_clusters)
-            df['Cluster'] = kmeans.fit_predict(data[['Danceability']])
-            st.success("Clustering realizado!")
-
-            # Visualizing the clusters
-            st.subheader("Clustering de Danceability")
-            fig, ax = plt.subplots()
-            sns.scatterplot(data=data, x='Danceability', y='Cluster', ax=ax, hue='Cluster', palette='viridis')
-            st.pyplot(fig)
-    else:
-        st.error("El archivo CSV por defecto no se encuentra en la carpeta del proyecto.")
 
 
