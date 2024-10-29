@@ -5,31 +5,20 @@
 
 **Installation**
 
-    Clone this repository:
+    Install the required dependencies from requirements.txt:
 
-    bash
 
-git clone https://github.com/yourusername/spotify-data-analysis.git
+        bash
 
-  Navigate to the project directory:
-
-  bash
-
-  cd spotify-data-analysis
-
-Install the required dependencies from requirements.txt:
-
-   bash
-
-    pip install -r requirements.txt
+        pip install -r requirements.txt
 
 **Usage**
 
 To start the analysis, run main.py. This script will load the datasets, perform data cleaning and analysis, and output the results.
 
-  bash
+        bash
   
-  python main.py
+        python main.py
 
   In main.py, you can follow the entire process of data loading, processing, and analysis. Be sure to have all datasets in the same directory as main.py (or adjust file paths as needed).
 
